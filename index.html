@@ -1,0 +1,1480 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="description" content="Vataavaran live weather, weekly forecast and rain alerts for your chosen location." />
+    <title>Vataavaran — Bengaluru Weather</title>
+    <style>
+      :root {
+        --bg-1: #071422;
+        --bg-2: #0d1b2a;
+        --panel: rgba(18, 31, 46, 0.75);
+        --panel-strong: rgba(11, 22, 32, 0.9);
+        --border: rgba(255, 255, 255, 0.08);
+        --text: #edf6ff;
+        --muted: #a7bdd4;
+        --soft: #6dd1ff;
+        --highlight: #7af0d5;
+        --warning: #ffcf70;
+        --danger: #ff8e8e;
+        --shadow: rgba(4, 8, 14, 0.6);
+      }
+
+      * { box-sizing: border-box; }
+
+      html, body {
+        margin: 0;
+        font-family: Inter, "Segoe UI", Roboto, sans-serif;
+        min-height: 100%;
+        color: var(--text);
+        background:
+          radial-gradient(circle at top left, rgba(73, 120, 255, 0.32), transparent 28%),
+          radial-gradient(circle at top right, rgba(100, 255, 215, 0.18), transparent 25%),
+          linear-gradient(135deg, var(--bg-1) 0%, var(--bg-2) 55%, #081521 100%);
+      }
+
+      body {
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 28px;
+      }
+
+      .app {
+        width: min(1180px, 100%);
+        background: rgba(10, 17, 27, 0.6);
+        border: 1px solid var(--border);
+        border-radius: 28px;
+        box-shadow: 0 30px 80px var(--shadow);
+        backdrop-filter: blur(18px);
+        -webkit-backdrop-filter: blur(18px);
+        overflow: hidden;
+      }
+
+      .topbar {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 20px 28px 10px;
+      }
+
+      .brand {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        font-weight: 600;
+        letter-spacing: 0.04em;
+      }
+
+      .brand-mark {
+        width: 38px;
+        height: 38px;
+        border-radius: 12px;
+        display: grid;
+        place-items: center;
+        background: linear-gradient(135deg, #77d5ff, #6d8dff 60%, #8c7dff);
+        box-shadow: 0 12px 26px rgba(98, 130, 255, 0.55);
+        font-size: 1.15rem;
+      }
+
+      .controls {
+        display: flex;
+        align-items: center;
+        gap: 14px;
+        flex-wrap: wrap;
+      }
+
+      .searchbox {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        background: rgba(255,255,255,0.05);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+        padding: 10px 14px;
+        min-width: 250px;
+      }
+
+      .searchbox input {
+        background: transparent;
+        border: 0;
+        outline: none;
+        color: var(--text);
+        width: 100%;
+        font-size: 0.96rem;
+      }
+
+      .searchbox input::placeholder { color: var(--muted); }
+      .search-area { position: relative; }
+      .search-form { display: flex; align-items: center; gap: 8px; }
+      .searchbox { min-width: 240px; }
+      .searchbox input { min-width: 115px; }
+      .search-action, .location-btn {
+        flex: 0 0 auto;
+        border: 0;
+        border-radius: 999px;
+        padding: 7px 12px;
+        color: var(--text);
+        background: rgba(122,240,213,0.14);
+        cursor: pointer;
+        font: inherit;
+      }
+      .location-btn { border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.05); }
+      .search-action:hover, .location-btn:hover { background: rgba(122,240,213,0.24); }
+      .search-results {
+        position: absolute;
+        z-index: 5;
+        top: calc(100% + 8px);
+        left: 0;
+        right: 0;
+        display: none;
+        max-height: 320px;
+        overflow-y: auto;
+        padding: 6px;
+        background: #102033;
+        border: 1px solid var(--border);
+        border-radius: 16px;
+        box-shadow: 0 18px 40px rgba(0,0,0,0.4);
+      }
+      .search-results.open { display: block; }
+      .search-result {
+        display: block;
+        width: 100%;
+        padding: 11px 12px;
+        border: 0;
+        border-radius: 11px;
+        text-align: left;
+        color: var(--text);
+        background: transparent;
+        cursor: pointer;
+      }
+      .search-result:hover, .search-result:focus-visible { background: rgba(122,240,213,0.12); }
+      .search-result small { display: block; margin-top: 3px; color: var(--muted); }
+      .search-message { margin: 8px 10px; color: var(--muted); font-size: 0.85rem; }
+      .voice-btn.listening {
+        border-color: rgba(255, 207, 112, 0.65);
+        background: rgba(255, 168, 74, 0.2);
+        animation: voice-pulse 1.2s ease-in-out infinite alternate;
+      }
+      @keyframes voice-pulse {
+        to { box-shadow: 0 0 0 5px rgba(255, 207, 112, 0.12); }
+      }
+
+      .unit-toggle {
+        display: inline-flex;
+        align-items: center;
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+        padding: 4px;
+      }
+
+      .unit-btn {
+        border: 0;
+        background: transparent;
+        color: var(--muted);
+        width: 42px;
+        height: 32px;
+        border-radius: 999px;
+        cursor: pointer;
+        transition: 0.2s ease;
+        font-weight: 700;
+      }
+
+      .unit-btn.active {
+        background: linear-gradient(135deg, rgba(122,240,213,0.2), rgba(116,159,255,0.22));
+        color: var(--text);
+        box-shadow: inset 0 0 0 1px rgba(122,240,213,0.4);
+      }
+
+      .content {
+        display: grid;
+        grid-template-columns: 1.5fr 0.8fr;
+        gap: 22px;
+        padding: 8px 28px 28px;
+      }
+
+      .panel {
+        background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.02));
+        border: 1px solid var(--border);
+        border-radius: 24px;
+        padding: 22px;
+        box-shadow: inset 0 1px 0 rgba(255,255,255,0.08);
+      }
+
+      .main-panel {
+        position: relative;
+        overflow: hidden;
+      }
+
+      .main-panel::before {
+        content: "";
+        position: absolute;
+        width: 240px;
+        height: 240px;
+        right: -60px;
+        top: -40px;
+        border-radius: 50%;
+        background: radial-gradient(circle, rgba(122,240,213,0.28), transparent 62%);
+      }
+
+      .hero {
+        position: relative;
+        z-index: 1;
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        gap: 24px;
+      }
+
+      .location {
+        color: var(--muted);
+        letter-spacing: 0.06em;
+        text-transform: uppercase;
+        font-size: 0.75rem;
+      }
+
+      .weather-main {
+        display: flex;
+        align-items: center;
+        gap: 18px;
+        margin-top: 18px;
+      }
+
+      .icon {
+        width: 94px;
+        height: 94px;
+        border-radius: 28px;
+        background: linear-gradient(135deg, rgba(255,255,255,0.15), rgba(122,240,213,0.1));
+        border: 1px solid rgba(255,255,255,0.08);
+        display: grid;
+        place-items: center;
+        font-size: 3rem;
+        position: relative;
+        overflow: hidden;
+      }
+
+      .icon::before {
+        content: "";
+        position: absolute;
+        inset: 12px;
+        border-radius: 22px;
+        border: 1px solid rgba(255,255,255,0.12);
+      }
+
+      .temp {
+        font-size: clamp(3.2rem, 6vw, 5.2rem);
+        line-height: 0.9;
+        font-weight: 800;
+        letter-spacing: -0.06em;
+      }
+
+      .temp small {
+        font-size: 1.6rem;
+        font-weight: 600;
+        color: var(--muted);
+      }
+
+      .summary {
+        margin-top: 12px;
+        font-size: 1.15rem;
+        color: var(--text);
+      }
+
+      .meta {
+        margin-top: 22px;
+        display: flex;
+        flex-wrap: wrap;
+        gap: 12px;
+      }
+
+      .pill {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 999px;
+        padding: 10px 14px;
+        color: var(--muted);
+        font-size: 0.9rem;
+      }
+
+      .forecast {
+        margin-top: 28px;
+      }
+
+      .section-title {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        margin-bottom: 14px;
+        color: var(--muted);
+        font-size: 0.82rem;
+        text-transform: uppercase;
+        letter-spacing: 0.12em;
+      }
+
+      .hourly {
+        display: grid;
+        grid-template-columns: repeat(6, minmax(80px, 1fr));
+        gap: 12px;
+      }
+
+      .hour-card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 18px;
+        padding: 12px 10px 14px;
+        text-align: center;
+        transition: transform 0.2s ease, border-color 0.2s ease, background 0.2s ease;
+      }
+
+      .hour-card:hover {
+        transform: translateY(-4px);
+        border-color: rgba(122,240,213,0.42);
+      }
+
+      .hour-card.active {
+        background: linear-gradient(180deg, rgba(111,200,255,0.14), rgba(122,240,213,0.08));
+        border-color: rgba(122,240,213,0.46);
+      }
+
+      .hour-card .time { color: var(--muted); font-size: 0.8rem; }
+      .hour-card .emoji { font-size: 1.8rem; margin: 8px 0; }
+      .hour-card .degrees { font-weight: 700; }
+
+      .side-panel {
+        display: grid;
+        gap: 22px;
+      }
+
+      .metrics {
+        display: grid;
+        grid-template-columns: repeat(2, minmax(120px, 1fr));
+        gap: 12px;
+      }
+
+      .metric-card {
+        background: rgba(255,255,255,0.04);
+        border: 1px solid rgba(255,255,255,0.08);
+        border-radius: 18px;
+        padding: 18px 16px;
+      }
+
+      .metric-label {
+        color: var(--muted);
+        font-size: 0.75rem;
+        text-transform: uppercase;
+        letter-spacing: 0.08em;
+      }
+
+      .metric-value {
+        margin-top: 8px;
+        font-size: 1.6rem;
+        font-weight: 800;
+      }
+
+      .metric-value small {
+        font-size: 0.9rem;
+        color: var(--muted);
+      }
+
+      .week {
+        display: grid;
+        gap: 10px;
+      }
+
+      .day-row {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 10px;
+        align-items: center;
+        padding: 10px 12px;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.03);
+        border: 1px solid rgba(255,255,255,0.06);
+      }
+
+      .day-row .day { font-weight: 600; }
+      .day-row .emoji { font-size: 1.4rem; }
+      .day-row .range { color: var(--muted); }
+      .day-row .rain-chance { grid-column: 1 / -1; color: var(--muted); font-size: 0.82rem; }
+      .rain-alert {
+        margin-top: 22px;
+        padding: 15px 17px;
+        border: 1px solid rgba(122, 240, 213, 0.22);
+        border-radius: 18px;
+        background: rgba(122, 240, 213, 0.07);
+        color: var(--muted);
+        line-height: 1.5;
+      }
+      .rain-alert.rain-likely { border-color: rgba(255, 207, 112, 0.5); background: rgba(255, 168, 74, 0.12); color: var(--text); }
+      .rain-alert strong { color: var(--text); }
+      .panel-note, .updated-at { color: var(--muted); font-size: 0.82rem; line-height: 1.5; }
+      .panel-note { margin: 14px 0 0; }
+      .updated-at { margin-top: 18px; }
+      .refresh-btn, .notify-btn {
+        border: 1px solid rgba(255,255,255,0.12);
+        border-radius: 999px;
+        padding: 9px 13px;
+        background: rgba(255,255,255,0.05);
+        color: var(--text);
+        cursor: pointer;
+        font: inherit;
+      }
+      .refresh-btn:hover, .notify-btn:hover { border-color: rgba(122,240,213,0.5); background: rgba(122,240,213,0.1); }
+      .refresh-btn:disabled { opacity: 0.6; cursor: wait; }
+      .month-summary { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; }
+      .month-stat { padding: 14px; border-radius: 16px; background: rgba(255,255,255,0.04); border: 1px solid rgba(255,255,255,0.07); }
+      .month-stat strong { display: block; font-size: 1.25rem; margin-top: 6px; }
+      .month-stat span { color: var(--muted); font-size: 0.76rem; }
+      .air-quality-score { display: flex; align-items: baseline; gap: 8px; }
+      .air-quality-score strong { font-size: 2rem; }
+      .air-quality-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 14px; }
+      .aqi-good { color: #76e3a5; }
+      .aqi-moderate { color: #ffd166; }
+      .aqi-sensitive { color: #ffad66; }
+      .aqi-unhealthy { color: #ff8888; }
+      .aqi-very-unhealthy { color: #df9bff; }
+      .aqi-hazardous { color: #ff5b73; }
+      .climate-clock {
+        margin: 10px 0;
+        font-variant-numeric: tabular-nums;
+        font-size: clamp(1.7rem, 4vw, 2.5rem);
+        font-weight: 800;
+        letter-spacing: 0.03em;
+      }
+      .impact-meter {
+        height: 9px;
+        margin: 14px 0 8px;
+        overflow: hidden;
+        border-radius: 99px;
+        background: rgba(255,255,255,0.09);
+      }
+      .impact-meter span { display: block; height: 100%; width: 0; border-radius: inherit; background: linear-gradient(90deg, #76e3a5, #ffd166, #ff8888); transition: width 0.35s ease; }
+      .hazard-list { display: grid; gap: 10px; }
+      .hazard-item {
+        padding: 13px 14px;
+        border: 1px solid rgba(255,255,255,0.08);
+        border-left: 3px solid #76e3a5;
+        border-radius: 14px;
+        background: rgba(255,255,255,0.035);
+        color: var(--muted);
+        line-height: 1.45;
+        font-size: 0.88rem;
+      }
+      .hazard-item strong { display: block; margin-bottom: 3px; color: var(--text); }
+      .hazard-item.watch { border-left-color: #ffd166; }
+      .hazard-item.warning { border-left-color: #ffad66; }
+      .hazard-item.alert { border-left-color: #ff5b73; background: rgba(255,91,115,0.08); }
+      .source-link { color: var(--soft); text-decoration: none; }
+      .source-link:hover { text-decoration: underline; }
+      .voice-status {
+        margin: 0;
+        color: var(--muted);
+        font-size: 0.88rem;
+        line-height: 1.5;
+      }
+
+      @media (max-width: 900px) {
+        .content {
+          grid-template-columns: 1fr;
+        }
+      }
+
+      @media (max-width: 620px) {
+        body { padding: 18px; }
+        .topbar { flex-direction: column; align-items: flex-start; }
+        .controls { width: 100%; justify-content: space-between; }
+        .searchbox { flex: 1; min-width: 0; }
+        .hero { flex-direction: column; align-items: flex-start; }
+        .weather-main { align-items: flex-start; }
+        .hourly { grid-template-columns: repeat(3, minmax(80px, 1fr)); }
+      }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <div class="topbar">
+        <div class="brand">
+          <div class="brand-mark">☼</div>
+          <span>Vataavaran</span>
+        </div>
+
+        <div class="controls">
+          <div class="search-area">
+            <form class="search-form" id="locationSearchForm" role="search">
+              <label class="searchbox" aria-label="Search a city or Indian PIN code">
+                <span>⌕</span>
+                <input id="locationSearch" type="search" value="Bengaluru" placeholder="City or PIN code" aria-label="Search a city or Indian PIN code" autocomplete="off" />
+              </label>
+              <button class="search-action" type="submit">Search</button>
+              <button class="location-btn" id="myLocationButton" type="button" title="Use my device location" aria-label="Use my device location">◎</button>
+            </form>
+            <div class="search-results" id="searchResults" role="listbox" aria-label="Location results"></div>
+          </div>
+          <div class="unit-toggle" aria-label="Temperature units">
+            <button class="unit-btn active" data-unit="c">°C</button>
+            <button class="unit-btn" data-unit="f">°F</button>
+          </div>
+          <button class="refresh-btn" id="refreshButton" type="button">↻ Refresh</button>
+          <button class="refresh-btn voice-btn" id="voiceButton" type="button" aria-label="Ask Vataavaran by voice">🎙 Ask by voice</button>
+        </div>
+      </div>
+
+      <div class="content">
+        <section class="panel main-panel">
+          <div class="hero">
+            <div>
+              <div class="location">Bengaluru · 560016, India</div>
+              <div class="weather-main">
+                <div class="icon" id="currentIcon" aria-label="Weather icon">⛅</div>
+                <div>
+                  <div class="temp"><span id="tempValue">--</span><small>°</small></div>
+                  <div class="summary" id="summaryText">Loading current conditions…</div>
+                </div>
+              </div>
+            </div>
+            <div class="pill" id="todayLabel">Loading local time…</div>
+          </div>
+
+          <div class="meta">
+            <div class="pill">Feels like <strong id="feelsValue">--</strong></div>
+            <div class="pill">Humidity <strong id="humidityValue">--</strong></div>
+            <div class="pill">Wind <strong id="windValue">--</strong></div>
+          </div>
+
+          <div class="rain-alert" id="rainAlert" role="status" aria-live="polite">Checking rain chances for your day…</div>
+          <p class="voice-status" id="voiceStatus" role="status" aria-live="polite">Ask by voice for the weather in a city, or ask for your current location.</p>
+
+          <div class="forecast">
+            <div class="section-title">
+              <span>Today</span>
+              <span>Hourly · rain chance</span>
+            </div>
+
+            <div class="hourly" id="hourlyForecast"></div>
+          </div>
+          <div class="updated-at" id="updatedAt">Connecting to live forecast…</div>
+        </section>
+
+        <aside class="side-panel">
+          <section class="panel">
+            <div class="section-title">
+              <span>Details</span>
+            </div>
+            <div class="metrics">
+              <div class="metric-card">
+                <div class="metric-label">Rain</div>
+                <div class="metric-value" id="rainValue">--<small> mm</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Rain chance</div>
+                <div class="metric-value" id="rainChanceValue">--<small>%</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Sunrise</div>
+                <div class="metric-value" id="sunriseValue">--</div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Sunset</div>
+                <div class="metric-value" id="sunsetValue">--</div>
+              </div>
+            </div>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <span>7-Day Forecast</span>
+            </div>
+            <div class="week" id="weekForecast"></div>
+            <p class="panel-note">Daily high/low and peak rain probability, refreshed from live data.</p>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <span>Monthly Outlook</span>
+              <span id="monthLabel"></span>
+            </div>
+            <div class="month-summary" id="monthSummary">
+              <div class="month-stat"><span>Forecast window</span><strong>Loading…</strong></div>
+            </div>
+            <p class="panel-note" id="monthNote">Loading the available forecast period…</p>
+            <button class="notify-btn" id="notifyButton" type="button">Enable weather &amp; environment alerts</button>
+            <p class="panel-note">Browser alerts require permission and this page to remain open. The scheduled 6 AM and 9 AM briefs run separately.</p>
+          </section>
+
+          <section class="panel">
+            <div class="section-title">
+              <span>Air Quality</span>
+              <span id="airQualityUpdated">Loading…</span>
+            </div>
+            <div class="air-quality-score">
+              <strong id="airQualityIndex">--</strong>
+              <span id="airQualityCategory">US AQI · Loading</span>
+            </div>
+            <p class="panel-note" id="airQualityAdvice">Air quality readings are loading for this location.</p>
+            <div class="air-quality-grid">
+              <div class="metric-card">
+                <div class="metric-label">PM2.5</div>
+                <div class="metric-value" id="pm25Value">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">PM10</div>
+                <div class="metric-value" id="pm10Value">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Ozone</div>
+                <div class="metric-value" id="ozoneValue">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Dust</div>
+                <div class="metric-value" id="dustValue">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Nitrogen dioxide</div>
+                <div class="metric-value" id="nitrogenDioxideValue">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Sulphur dioxide</div>
+                <div class="metric-value" id="sulphurDioxideValue">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">Carbon monoxide</div>
+                <div class="metric-value" id="carbonMonoxideValue">--<small> µg/m³</small></div>
+              </div>
+              <div class="metric-card">
+                <div class="metric-label">European AQI</div>
+                <div class="metric-value" id="europeanAqiValue">--</div>
+              </div>
+            </div>
+            <p class="panel-note">Modelled near-surface estimates · Open-Meteo Air Quality API. AQI scale: US EPA.</p>
+          </section>
+
+          <section class="panel">
+            <div class="section-title"><span>Climate Clock</span><span>1.5°C pathway</span></div>
+            <div class="climate-clock" id="climateClockValue" aria-live="polite">--</div>
+            <p class="panel-note" id="climateClockBudget">Estimating a remaining global CO₂ budget…</p>
+            <p class="panel-note">An illustrative global carbon-budget countdown, not a local forecast or an exact deadline. Baseline: 235 GtCO₂ remaining at 1 Jan 2025 for a 50% chance of limiting warming to 1.5°C; assumes constant emissions of 42.4 GtCO₂/year. Actual emissions and scientific estimates change.</p>
+            <p class="panel-note">
+              <a class="source-link" href="https://globalcarbonbudget.org/carbonbudget2024/" target="_blank" rel="noopener noreferrer">Global Carbon Budget 2024</a>
+              · <a class="source-link" href="https://climateclock.world/" target="_blank" rel="noopener noreferrer">Climate Clock</a>
+            </p>
+          </section>
+
+          <section class="panel">
+            <div class="section-title"><span>Climate impact rating</span><span id="impactRatingLabel">Checking…</span></div>
+            <div class="impact-meter" role="meter" aria-label="Local environmental conditions impact rating" aria-valuemin="0" aria-valuemax="100" aria-valuenow="0">
+              <span id="impactMeterFill"></span>
+            </div>
+            <p class="panel-note" id="impactRatingInfo">A local conditions index based on current AQI and forecast hazards—not a personal carbon-footprint score.</p>
+          </section>
+
+          <section class="panel">
+            <div class="section-title"><span>Environmental alerts</span><span id="hazardAlertCount">Checking…</span></div>
+            <div class="hazard-list" id="hazardAlertList" aria-live="polite">
+              <div class="hazard-item">Checking air quality and severe-weather indicators for this location…</div>
+            </div>
+            <p class="panel-note">Forecast-based advisories only. Not an official emergency warning; follow local authorities and emergency services.</p>
+          </section>
+        </aside>
+      </div>
+    </div>
+
+    <script>
+      let weatherLocation = {
+        latitude: 12.97194,
+        longitude: 77.59369,
+        timezone: 'Asia/Kolkata',
+        label: 'Bengaluru · 560016, India'
+      };
+      const rainAlertThreshold = 50;
+      const weather = { current: null, hourly: [], daily: [], air: null, airError: null, unit: 'c', utcOffsetSeconds: 19800 };
+      const $ = id => document.getElementById(id);
+      const unitButtons = document.querySelectorAll('.unit-btn');
+      let requestSequence = 0;
+      let searchSequence = 0;
+      let airRequestSequence = 0;
+
+      function weatherCode(code) {
+        if (code === 0) return ['Clear sky', '☀️'];
+        if ([1, 2].includes(code)) return ['Mainly clear', '🌤️'];
+        if (code === 3) return ['Overcast', '☁️'];
+        if ([45, 48].includes(code)) return ['Foggy', '🌫️'];
+        if ([51, 53, 55, 56, 57].includes(code)) return ['Drizzle', '🌦️'];
+        if ([61, 63, 65, 66, 67, 80, 81, 82].includes(code)) return ['Rain showers', '🌧️'];
+        if ([71, 73, 75, 77, 85, 86].includes(code)) return ['Snow', '❄️'];
+        if ([95, 96, 99].includes(code)) return ['Thunderstorms', '⛈️'];
+        return ['Conditions unavailable', '🌡️'];
+      }
+
+      function cToF(value) { return value * 9 / 5 + 32; }
+      function parseLocalTime(value) {
+        if (/[zZ]|[+-]\d{2}:\d{2}$/.test(value)) return new Date(value);
+        const totalMinutes = Math.trunc(weather.utcOffsetSeconds / 60);
+        const sign = totalMinutes < 0 ? '-' : '+';
+        const absoluteMinutes = Math.abs(totalMinutes);
+        const offset = `${sign}${String(Math.trunc(absoluteMinutes / 60)).padStart(2, '0')}:${String(absoluteMinutes % 60).padStart(2, '0')}`;
+        return new Date(`${value}${offset}`);
+      }
+      function displayTemp(value) {
+        if (!Number.isFinite(value)) return '--';
+        return `${(weather.unit === 'c' ? value : cToF(value)).toFixed(1)}°`;
+      }
+      function displayTime(value, options = { hour: 'numeric', minute: '2-digit' }) {
+        return new Intl.DateTimeFormat('en-IN', { ...options, timeZone: weatherLocation.timezone })
+          .format(parseLocalTime(value));
+      }
+      function dateLabel(value, options = { weekday: 'short' }) {
+        return new Intl.DateTimeFormat('en-IN', { ...options, timeZone: weatherLocation.timezone })
+          .format(parseLocalTime(`${value}T12:00:00`));
+      }
+
+      function renderHourly() {
+        const now = weather.current?.time ? parseLocalTime(weather.current.time).getTime() : Date.now();
+        const upcoming = weather.hourly
+          .map((time, index) => ({ time, index, moment: parseLocalTime(time).getTime() }))
+          .filter(item => item.moment >= now)
+          .slice(0, 6);
+        $('hourlyForecast').innerHTML = upcoming.map((item, position) => {
+          const { time, index } = item;
+          const [description, icon] = weatherCode(weather.hourlyCodes[index]);
+          const precipitation = weather.hourlyRainChance[index];
+          return `<div class="hour-card ${position === 0 ? 'active' : ''}" title="${description}; rain chance ${precipitation ?? 'unavailable'}%">
+            <div class="time">${position === 0 ? 'Now' : displayTime(time, { hour: 'numeric' })}</div>
+            <div class="emoji">${icon}</div>
+            <div class="degrees">${displayTemp(weather.hourlyTemperatures[index])}</div>
+            <div class="time">☂ ${precipitation ?? '—'}%</div>
+          </div>`;
+        }).join('') || '<p class="panel-note">No hourly forecast is currently available.</p>';
+      }
+
+      function renderWeek() {
+        $('weekForecast').innerHTML = weather.daily.slice(0, 7).map(day => {
+          const [description, icon] = weatherCode(day.code);
+          return `<div class="day-row" title="${description}">
+            <div class="day">${dateLabel(day.date)}</div>
+            <div class="emoji">${icon}</div>
+            <div class="range">${displayTemp(day.min)} / ${displayTemp(day.max)}</div>
+            <div class="rain-chance">Rain chance ${day.rainChance ?? '—'}% · ${day.rain.toFixed(1)} mm expected</div>
+          </div>`;
+        }).join('') || '<p class="panel-note">No daily forecast is currently available.</p>';
+      }
+
+      function renderMonth() {
+        const now = new Date();
+        const today = new Intl.DateTimeFormat('en-CA', { timeZone: weatherLocation.timezone }).format(now);
+        const monthEnd = parseLocalTime(`${today}T12:00:00`);
+        monthEnd.setMonth(monthEnd.getMonth() + 1, 0);
+        const lastDate = new Intl.DateTimeFormat('en-CA', { timeZone: weatherLocation.timezone }).format(monthEnd);
+        const daysLeft = weather.daily.filter(day => day.date >= today && day.date <= lastDate);
+        const rainyDays = daysLeft.filter(day => (day.rainChance ?? 0) >= rainAlertThreshold).length;
+        const totalRain = daysLeft.reduce((sum, day) => sum + day.rain, 0);
+        const averageHigh = daysLeft.length
+          ? daysLeft.reduce((sum, day) => sum + day.max, 0) / daysLeft.length
+          : null;
+        const averageLow = daysLeft.length
+          ? daysLeft.reduce((sum, day) => sum + day.min, 0) / daysLeft.length
+          : null;
+        $('monthLabel').textContent = new Intl.DateTimeFormat('en-IN', {
+          month: 'long', timeZone: weatherLocation.timezone
+        }).format(now);
+        $('monthSummary').innerHTML = `
+          <div class="month-stat"><span>Forecast coverage</span><strong>${daysLeft.length} day${daysLeft.length === 1 ? '' : 's'}</strong></div>
+          <div class="month-stat"><span>Likely rain days (≥${rainAlertThreshold}%)</span><strong>${rainyDays}</strong></div>
+          <div class="month-stat"><span>Expected rain in coverage</span><strong>${totalRain.toFixed(1)} mm</strong></div>
+          <div class="month-stat"><span>Avg. high / low</span><strong>${averageHigh === null ? '—' : `${displayTemp(averageHigh)} / ${displayTemp(averageLow)}`}</strong></div>`;
+        $('monthNote').textContent = daysLeft.length
+          ? `Monthly view summarizes the remaining days in this month within the available forecast. Weather beyond this window is not extrapolated.`
+          : 'No days remain in the current month forecast window.';
+      }
+
+      function updateRainAdvice() {
+        const future = weather.daily[0];
+        const hourlyToday = weather.hourly
+          .map((time, index) => ({ time, chance: weather.hourlyRainChance[index] }))
+          .filter(item => item.time.slice(0, 10) === weather.daily[0]?.date);
+        const officeHours = hourlyToday.filter(item => {
+          const hour = Number(item.time.slice(11, 13));
+          return (hour >= 7 && hour <= 10) || (hour >= 16 && hour <= 19);
+        });
+        const commuteChances = officeHours.map(item => item.chance).filter(Number.isFinite);
+        const maxChance = commuteChances.length
+          ? Math.max(...commuteChances)
+          : future?.rainChance;
+        const alert = $('rainAlert');
+        if (!future || !Number.isFinite(maxChance)) {
+          alert.classList.remove('rain-likely');
+          alert.textContent = 'Rain guidance is temporarily unavailable. Refresh the forecast before leaving.';
+          return;
+        }
+        if (maxChance >= rainAlertThreshold) {
+          alert.classList.add('rain-likely');
+          alert.innerHTML = `<strong>Rain likely · ${maxChance}% chance during office commute hours.</strong> Take an umbrella or raincoat to the office. Check conditions again before your commute.`;
+          sendEnvironmentNotification('rain', 'Rain likely', `${maxChance}% rain chance near ${weatherLocation.label}. Take an umbrella or raincoat to the office.`);
+        } else {
+          alert.classList.remove('rain-likely');
+          alert.innerHTML = `No high rain risk detected for office commute hours. Highest commute-window chance: <strong>${maxChance}%</strong>.`;
+        }
+      }
+
+      function airQualityLevel(aqi) {
+        if (!Number.isFinite(aqi)) return { label: 'Unavailable', className: '', advice: 'Air-quality data is currently unavailable.' };
+        if (aqi <= 50) return { label: 'Good', className: 'aqi-good', advice: 'Air quality is satisfactory; usual outdoor activity is fine.' };
+        if (aqi <= 100) return { label: 'Moderate', className: 'aqi-moderate', advice: 'Air is acceptable; unusually sensitive people may wish to limit prolonged outdoor exertion.' };
+        if (aqi <= 150) return { label: 'Unhealthy for sensitive groups', className: 'aqi-sensitive', advice: 'Sensitive people, including children and people with heart or lung conditions, should reduce prolonged outdoor exertion.' };
+        if (aqi <= 200) return { label: 'Unhealthy', className: 'aqi-unhealthy', advice: 'Everyone may begin to experience effects; sensitive groups should avoid prolonged outdoor exertion.' };
+        if (aqi <= 300) return { label: 'Very unhealthy', className: 'aqi-very-unhealthy', advice: 'Health alert: reduce outdoor activity and follow local public-health guidance.' };
+        return { label: 'Hazardous', className: 'aqi-hazardous', advice: 'Health emergency conditions possible: avoid outdoor exertion and follow local public-health guidance.' };
+      }
+
+      function renderAirQuality() {
+        const air = weather.air?.current;
+        if (!air) {
+          $('airQualityIndex').textContent = '--';
+          $('airQualityCategory').textContent = 'US AQI · unavailable';
+          $('airQualityCategory').className = '';
+          $('airQualityAdvice').textContent = weather.airError
+            ? `Could not retrieve air-quality data: ${weather.airError}`
+            : 'Air-quality data is currently unavailable. Try refreshing.';
+          $('airQualityUpdated').textContent = 'Unavailable';
+          for (const id of ['pm25Value', 'pm10Value', 'ozoneValue', 'nitrogenDioxideValue', 'sulphurDioxideValue', 'carbonMonoxideValue']) {
+            const value = null;
+            $(id).innerHTML = `${Number.isFinite(value) ? value.toFixed(1) : '—'}<small> µg/m³</small>`;
+          }
+          $('dustValue').innerHTML = '—<small> µg/m³</small>';
+          $('europeanAqiValue').textContent = '—';
+          return;
+        }
+        const level = airQualityLevel(air.us_aqi);
+        $('airQualityIndex').textContent = Number.isFinite(air.us_aqi) ? Math.round(air.us_aqi) : '—';
+        $('airQualityCategory').textContent = `US AQI · ${level.label}`;
+        $('airQualityCategory').className = level.className;
+        $('airQualityAdvice').textContent = level.advice;
+        $('airQualityUpdated').textContent = displayTime(air.time);
+        $('pm25Value').innerHTML = `${Number.isFinite(air.pm2_5) ? air.pm2_5.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('pm10Value').innerHTML = `${Number.isFinite(air.pm10) ? air.pm10.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('ozoneValue').innerHTML = `${Number.isFinite(air.ozone) ? air.ozone.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('dustValue').innerHTML = `${Number.isFinite(air.dust) ? air.dust.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('nitrogenDioxideValue').innerHTML = `${Number.isFinite(air.nitrogen_dioxide) ? air.nitrogen_dioxide.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('sulphurDioxideValue').innerHTML = `${Number.isFinite(air.sulphur_dioxide) ? air.sulphur_dioxide.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('carbonMonoxideValue').innerHTML = `${Number.isFinite(air.carbon_monoxide) ? air.carbon_monoxide.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('dustValue').innerHTML = `${Number.isFinite(air.dust) ? air.dust.toFixed(1) : '—'}<small> µg/m³</small>`;
+        $('europeanAqiValue').textContent = Number.isFinite(air.european_aqi) ? Math.round(air.european_aqi) : '—';
+      }
+
+      function getEnvironmentalHazards() {
+        const hazards = [];
+        const air = weather.air?.current;
+        const aqi = air?.us_aqi;
+        if (Number.isFinite(aqi) && aqi > 100) {
+          const level = airQualityLevel(aqi);
+          hazards.push({
+            id: 'air-quality',
+            severity: aqi > 200 ? 'alert' : 'warning',
+            title: `Air quality: ${level.label} (US AQI ${Math.round(aqi)})`,
+            detail: level.advice,
+            score: Math.min(100, Math.round(aqi / 3))
+          });
+        }
+        if (Number.isFinite(air?.dust) && air.dust >= 100) {
+          hazards.push({
+            id: 'airborne-dust',
+            severity: air.dust >= 250 ? 'alert' : 'warning',
+            title: `Elevated airborne dust · ${air.dust.toFixed(0)} µg/m³`,
+            detail: 'Limit strenuous outdoor activity if dust is visible or irritating, and follow local health and air-quality guidance.',
+            score: Math.min(100, Math.round(air.dust / 3))
+          });
+        }
+        const current = weather.current;
+        if (current && [95, 96, 99].includes(current.weather_code)) {
+          hazards.push({
+            id: 'thunderstorm',
+            severity: [96, 99].includes(current.weather_code) ? 'alert' : 'warning',
+            title: 'Thunderstorm indicated',
+            detail: 'The live weather model indicates thunderstorm conditions. Seek sturdy shelter if thunder is nearby and follow local alerts.',
+            score: 85
+          });
+        }
+        if (current && current.wind_speed_10m >= 60) {
+          hazards.push({
+            id: 'high-wind',
+            severity: current.wind_speed_10m >= 90 ? 'alert' : 'warning',
+            title: `Very strong winds · ${Math.round(current.wind_speed_10m)} km/h`,
+            detail: 'Secure loose outdoor objects and avoid exposed areas. This is a model-based indicator, not an official warning.',
+            score: Math.min(100, Math.round(current.wind_speed_10m))
+          });
+        }
+        const apparentC = current?.apparent_temperature;
+        if (Number.isFinite(apparentC) && apparentC >= 40) {
+          hazards.push({
+            id: 'extreme-heat',
+            severity: apparentC >= 45 ? 'alert' : 'warning',
+            title: `Extreme heat stress · feels like ${Math.round(apparentC)}°C`,
+            detail: 'Limit strenuous outdoor activity, seek shade, and drink water. Follow local heat advisories.',
+            score: Math.min(100, Math.round((apparentC - 25) * 5))
+          });
+        }
+        if (Number.isFinite(current?.temperature_2m) && current.temperature_2m <= -10) {
+          hazards.push({
+            id: 'extreme-cold',
+            severity: current.temperature_2m <= -20 ? 'alert' : 'warning',
+            title: `Extreme cold · ${Math.round(current.temperature_2m)}°C`,
+            detail: 'Limit exposure, dress in warm layers, and follow local cold-weather advisories.',
+            score: Math.min(100, Math.round(Math.abs(current.temperature_2m) * 3))
+          });
+        }
+        const peakHourlyRain = weather.hourlyPrecipitation?.reduce((max, amount, index) => {
+          const dateIsToday = weather.hourly[index]?.slice(0, 10) === weather.daily[0]?.date;
+          return dateIsToday && Number.isFinite(amount) ? Math.max(max, amount) : max;
+        }, 0) ?? 0;
+        const todayRain = weather.daily[0]?.rain ?? 0;
+        if (peakHourlyRain >= 20 || todayRain >= 50) {
+          const intensity = Math.max(peakHourlyRain, todayRain);
+          hazards.push({
+            id: 'heavy-rain',
+            severity: peakHourlyRain >= 50 || todayRain >= 100 ? 'alert' : 'warning',
+            title: `Heavy rainfall indicated · ${peakHourlyRain.toFixed(1)} mm peak hour`,
+            detail: 'Heavy rain may cause localised waterlogging or flash flooding. Avoid flooded roads and follow local authorities.',
+            score: Math.min(100, Math.round(intensity * 2))
+          });
+        }
+        return hazards;
+      }
+
+      function renderEnvironmentalAlerts() {
+        const hazards = getEnvironmentalHazards();
+        const list = $('hazardAlertList');
+        const meter = document.querySelector('[role="meter"]');
+        updateClimateClock();
+        const aqi = weather.air?.current?.us_aqi;
+        const weatherRisk = hazards.reduce((highest, hazard) => Math.max(highest, hazard.score), 0);
+        const impact = Math.max(Number.isFinite(aqi) ? Math.min(100, Math.round(aqi / 3)) : 0, weatherRisk);
+        const impactLevel = impact >= 70 ? 'High' : impact >= 40 ? 'Elevated' : impact >= 20 ? 'Moderate' : 'Low';
+        $('impactRatingLabel').textContent = `${impactLevel} · ${impact}/100`;
+        $('impactRatingInfo').textContent = hazards.length
+          ? `${hazards.length} current model-based ${hazards.length === 1 ? 'advisory' : 'advisories'} contribute to this local conditions rating. It is not a personal carbon-footprint score or official warning.`
+          : 'No elevated local air-quality or severe-weather indicators are currently detected. This is a local conditions rating, not a carbon-footprint score.';
+        $('impactMeterFill').style.width = `${impact}%`;
+        meter.setAttribute('aria-valuenow', String(impact));
+
+        $('hazardAlertCount').textContent = hazards.length ? `${hazards.length} advisory${hazards.length === 1 ? '' : 'ies'}` : 'No active alerts';
+        list.replaceChildren();
+        if (!hazards.length) {
+          const clear = document.createElement('div');
+          clear.className = 'hazard-item';
+          clear.innerHTML = '<strong>No elevated hazards detected</strong>Forecast models show no high-pollution or severe-weather triggers at this time. Keep local emergency alerts enabled.';
+          list.append(clear);
+          return;
+        }
+        hazards.forEach(hazard => {
+          const item = document.createElement('div');
+          item.className = `hazard-item ${hazard.severity}`;
+          const title = document.createElement('strong');
+          title.textContent = hazard.title;
+          const detail = document.createElement('span');
+          detail.textContent = hazard.detail;
+          item.append(title, detail);
+          list.append(item);
+        });
+        hazards.filter(hazard => hazard.severity === 'warning' || hazard.severity === 'alert')
+          .forEach(hazard => sendEnvironmentNotification(hazard.id, hazard.title, hazard.detail));
+      }
+
+      function sendEnvironmentNotification(id, title, body) {
+        if (!('Notification' in window) || Notification.permission !== 'granted') return;
+        const date = weather.daily[0]?.date ?? 'today';
+        const locationKey = `${weatherLocation.latitude.toFixed(3)}-${weatherLocation.longitude.toFixed(3)}`;
+        const key = `vataavaran-alert-${locationKey}-${date}-${id}`;
+        if (localStorage.getItem(key)) return;
+        new Notification(`Vataavaran · ${title}`, { body: `${weatherLocation.label}: ${body}` });
+        localStorage.setItem(key, 'sent');
+      }
+
+      function updateClimateClock() {
+        const baselineDate = Date.UTC(2025, 0, 1);
+        const secondsPerYear = 365.2425 * 24 * 60 * 60;
+        const budgetAtBaseline = 235;
+        const annualEmissions = 42.4;
+        const elapsedSeconds = Math.max(0, (Date.now() - baselineDate) / 1000);
+        const remainingGt = Math.max(0, budgetAtBaseline - elapsedSeconds / secondsPerYear * annualEmissions);
+        const remainingSeconds = remainingGt / annualEmissions * secondsPerYear;
+        const deadline = new Date(Date.now() + remainingSeconds * 1000);
+        const days = Math.floor(remainingSeconds / 86400);
+        const hours = Math.floor((remainingSeconds % 86400) / 3600);
+        const minutes = Math.floor((remainingSeconds % 3600) / 60);
+        const seconds = Math.floor(remainingSeconds % 60);
+        $('climateClockValue').textContent = remainingGt > 0
+          ? `${days}d ${String(hours).padStart(2, '0')}:${String(minutes).padStart(2, '0')}:${String(seconds).padStart(2, '0')}`
+          : 'Budget estimate elapsed';
+        const deadlineText = new Intl.DateTimeFormat('en', { month: 'long', year: 'numeric', timeZone: 'UTC' }).format(deadline);
+        $('climateClockBudget').textContent = `Illustrative remaining budget: ${remainingGt.toFixed(1)} GtCO₂ · extrapolated deadline around ${deadlineText}.`;
+      }
+
+      function render() {
+        if (!weather.current) return;
+        const current = weather.current;
+        const [description, icon] = weatherCode(current.weather_code);
+        document.querySelector('.location').textContent = weatherLocation.label;
+        document.title = `Vataavaran — ${weatherLocation.label.split(/[·,]/)[0].trim()} Weather`;
+        $('tempValue').textContent = displayTemp(current.temperature_2m).replace('°', '');
+        $('feelsValue').textContent = `${displayTemp(current.apparent_temperature)}${weather.unit.toUpperCase()}`;
+        $('humidityValue').textContent = `${current.relative_humidity_2m}%`;
+        $('windValue').textContent = `${current.wind_speed_10m} km/h`;
+        $('summaryText').textContent = description;
+        $('currentIcon').textContent = icon;
+        $('todayLabel').textContent = `${dateLabel(current.time.slice(0, 10), { weekday: 'long', month: 'short', day: 'numeric' })} · ${displayTime(current.time)}`;
+        const today = weather.daily[0];
+        $('rainValue').innerHTML = `${today?.rain.toFixed(1) ?? '—'}<small> mm</small>`;
+        $('rainChanceValue').innerHTML = `${today?.rainChance ?? '—'}<small>%</small>`;
+        $('sunriseValue').textContent = today ? displayTime(today.sunrise) : '—';
+        $('sunsetValue').textContent = today ? displayTime(today.sunset) : '—';
+        unitButtons.forEach(button => button.classList.toggle('active', button.dataset.unit === weather.unit));
+        renderHourly();
+        renderWeek();
+        renderMonth();
+        updateRainAdvice();
+        renderAirQuality();
+        renderEnvironmentalAlerts();
+        $('updatedAt').textContent = `Live data · Updated ${displayTime(current.time)} local time · Source: Open-Meteo`;
+      }
+
+      async function loadWeather() {
+        const button = $('refreshButton');
+        const requestId = ++requestSequence;
+        button.disabled = true;
+        button.textContent = 'Loading…';
+        if (weather.current) $('summaryText').textContent = 'Refreshing live weather…';
+        const url = new URL('https://api.open-meteo.com/v1/forecast');
+        url.search = new URLSearchParams({
+          latitude: String(weatherLocation.latitude),
+          longitude: String(weatherLocation.longitude),
+          timezone: 'auto',
+          forecast_days: '16',
+          current: 'temperature_2m,relative_humidity_2m,apparent_temperature,precipitation,weather_code,wind_speed_10m',
+          hourly: 'temperature_2m,precipitation,precipitation_probability,weather_code',
+          daily: 'weather_code,temperature_2m_max,temperature_2m_min,precipitation_sum,precipitation_probability_max,sunrise,sunset',
+          temperature_unit: 'celsius',
+          wind_speed_unit: 'kmh',
+          precipitation_unit: 'mm'
+        });
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Weather service returned ${response.status}`);
+          const data = await response.json();
+          if (requestId !== requestSequence) return;
+          weatherLocation.timezone = data.timezone || weatherLocation.timezone;
+          weather.utcOffsetSeconds = data.utc_offset_seconds ?? weather.utcOffsetSeconds;
+          weather.current = data.current;
+          weather.hourly = data.hourly.time;
+          weather.hourlyTemperatures = data.hourly.temperature_2m;
+          weather.hourlyPrecipitation = data.hourly.precipitation;
+          weather.hourlyRainChance = data.hourly.precipitation_probability;
+          weather.hourlyCodes = data.hourly.weather_code;
+          weather.daily = data.daily.time.map((date, index) => ({
+            date,
+            code: data.daily.weather_code[index],
+            max: data.daily.temperature_2m_max[index],
+            min: data.daily.temperature_2m_min[index],
+            rain: data.daily.precipitation_sum[index] ?? 0,
+            rainChance: data.daily.precipitation_probability_max[index],
+            sunrise: data.daily.sunrise[index],
+            sunset: data.daily.sunset[index]
+          }));
+          await loadAirQuality(requestId);
+          if (requestId !== requestSequence) return;
+          render();
+          return true;
+        } catch (error) {
+          if (requestId !== requestSequence) return;
+          $('summaryText').textContent = 'Unable to load live weather';
+          $('rainAlert').textContent = 'Could not retrieve weather data. Check your connection and try refreshing.';
+          $('rainAlert').classList.remove('rain-likely');
+          $('updatedAt').textContent = `Forecast error: ${error.message}`;
+          return false;
+        } finally {
+          if (requestId === requestSequence) {
+            button.disabled = false;
+            button.textContent = '↻ Refresh';
+          }
+        }
+      }
+
+      async function loadAirQuality(weatherRequestId) {
+        const airId = ++airRequestSequence;
+        const url = new URL('https://air-quality-api.open-meteo.com/v1/air-quality');
+        url.search = new URLSearchParams({
+          latitude: String(weatherLocation.latitude),
+          longitude: String(weatherLocation.longitude),
+          timezone: 'auto',
+          current: 'us_aqi,european_aqi,pm2_5,pm10,ozone,nitrogen_dioxide,sulphur_dioxide,carbon_monoxide,dust'
+        });
+        try {
+          const response = await fetch(url);
+          if (!response.ok) throw new Error(`Air-quality service returned ${response.status}`);
+          const data = await response.json();
+          if (weatherRequestId !== requestSequence || airId !== airRequestSequence) return;
+          weather.air = data;
+          weather.airError = null;
+        } catch (error) {
+          if (weatherRequestId !== requestSequence || airId !== airRequestSequence) return;
+          weather.air = null;
+          $('airQualityUpdated').textContent = 'Unavailable';
+          weather.airError = error.message;
+        }
+      }
+
+      function showSearchMessage(message, isError = false) {
+        const results = $('searchResults');
+        results.replaceChildren();
+        const text = document.createElement('p');
+        text.className = `search-message${isError ? ' status-error' : ''}`;
+        text.textContent = message;
+        results.append(text);
+        results.classList.add('open');
+      }
+
+      function selectLocation(place) {
+        airRequestSequence += 1;
+        weatherLocation = {
+          latitude: Number(place.latitude),
+          longitude: Number(place.longitude),
+          timezone: place.timezone || 'auto',
+          label: place.label
+        };
+        $('locationSearch').value = place.inputLabel || place.name;
+        $('searchResults').classList.remove('open');
+        loadWeather();
+      }
+
+      function renderLocationResults(places) {
+        const results = $('searchResults');
+        results.replaceChildren();
+        if (!places.length) {
+          showSearchMessage('No matching locations found. Try a city name or Indian PIN code.', true);
+          return;
+        }
+        places.forEach(place => {
+          const option = document.createElement('button');
+          option.type = 'button';
+          option.className = 'search-result';
+          option.setAttribute('role', 'option');
+          option.textContent = place.name;
+          const detail = document.createElement('small');
+          detail.textContent = place.detail;
+          option.append(detail);
+          option.addEventListener('click', () => selectLocation(place));
+          results.append(option);
+        });
+        results.classList.add('open');
+      }
+
+      async function lookupLocations(query) {
+        const normalized = query.trim();
+        if (normalized.length < 2) return [];
+        if (/^\d{4,6}$/.test(normalized)) {
+          const response = await fetch(`https://api.zippopotam.us/IN/${encodeURIComponent(normalized)}`);
+          if (!response.ok) {
+            if (response.status === 404) return [];
+            throw new Error(`PIN lookup returned ${response.status}`);
+          }
+          const data = await response.json();
+          return data.places.map(place => ({
+            name: place['place name'],
+            detail: `${place.state}, India · PIN ${data['post code']}`,
+            label: `${place['place name']} · ${data['post code']}, ${place.state}, India`,
+            inputLabel: data['post code'],
+            latitude: place.latitude,
+            longitude: place.longitude,
+            timezone: 'Asia/Kolkata'
+          }));
+        }
+        const url = new URL('https://geocoding-api.open-meteo.com/v1/search');
+        url.search = new URLSearchParams({
+          name: normalized,
+          count: '8',
+          language: 'en',
+          format: 'json'
+        });
+        const response = await fetch(url);
+        if (!response.ok) throw new Error(`Location search returned ${response.status}`);
+        const data = await response.json();
+        return (data.results || []).map(place => ({
+          name: place.name,
+          detail: [place.admin1, place.country].filter(Boolean).join(', '),
+          label: [place.name, place.admin1, place.country].filter(Boolean).join(', '),
+          inputLabel: normalized,
+          latitude: place.latitude,
+          longitude: place.longitude,
+          timezone: place.timezone
+        }));
+      }
+
+      async function searchLocations(query) {
+        const normalized = query.trim();
+        const searchId = ++searchSequence;
+        if (normalized.length < 2) {
+          showSearchMessage('Enter at least two characters to search.', true);
+          return;
+        }
+        showSearchMessage('Searching locations…');
+        try {
+          const places = await lookupLocations(normalized);
+          if (searchId !== searchSequence) return;
+          if (!places.length && /^\d{4,6}$/.test(normalized)) {
+            showSearchMessage('PIN code not found. Try searching by city name.', true);
+            return;
+          }
+          renderLocationResults(places);
+        } catch (error) {
+          if (searchId !== searchSequence) return;
+          showSearchMessage(`Could not search locations: ${error.message}`, true);
+        }
+      }
+
+      function extractVoiceLocation(transcript) {
+        let text = transcript.toLowerCase().trim()
+          .replace(/^(?:hey\s+)?vataavaran[\s,]*/, '')
+          .replace(/^(?:please\s+)?(?:tell me|show me|give me|check|update me on|read me|alert me(?:\s+if)?|notify me(?:\s+if)?|what(?:'s| is)|how(?:'s| is)|can you|could you|i want to know)\s+/, '')
+          .trim();
+        const preposition = text.match(/\b(?:in|at|for|near)\s+(.+)$/);
+        if (preposition) {
+          const candidate = preposition[1]
+            .replace(/[?.!,]/g, ' ')
+            .replace(/\s+(?:and\s+)?(?:tell me|show me|give me|check|read me|alert me|notify me|include|with all details)\b.*$/g, '')
+            .replace(/\b(?:today|tonight|tomorrow|right now|currently|please|thanks?)\b.*$/g, '')
+            .trim();
+          if (candidate && !/^(?:today|tonight|tomorrow|now|here|there|my location|current location)$/.test(candidate)) {
+            return candidate;
+          }
+          return null;
+        }
+        text = text
+          .replace(/^(?:the\s+)?(?:weather|forecast|conditions|air quality|air pollution|climate clock|climate impact|environmental alerts?)\b/, '')
+          .replace(/\b(?:weather|forecast|conditions|air quality|air pollution|climate clock|climate impact|environmental alerts?|today|tonight|tomorrow|right now|now|currently|please|details|update|like|there|here|complete|all|information|inform|alert|notify|me|if|pollution|quality|climate|impact)\b/g, '')
+          .replace(/^(?:the|in|at|for|near)\s+/, '')
+          .replace(/[?.!,]/g, ' ')
+          .trim();
+        return text.length >= 2 && !/^(?:the|weather|forecast|conditions|today|tonight|tomorrow|now|here|there|my location|current location)$/.test(text)
+          ? text
+          : null;
+      }
+
+      function getDeviceLocation() {
+        return new Promise((resolve, reject) => {
+          if (!navigator.geolocation) {
+            reject(new Error('Device location is not supported.'));
+            return;
+          }
+          navigator.geolocation.getCurrentPosition(
+            position => resolve({
+              latitude: position.coords.latitude,
+              longitude: position.coords.longitude,
+              timezone: 'auto',
+              label: `My location · ${position.coords.latitude.toFixed(2)}, ${position.coords.longitude.toFixed(2)}`,
+              name: 'My location',
+              inputLabel: 'My location'
+            }),
+            error => reject(error),
+            { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+          );
+        });
+      }
+
+      function commuteRainChance() {
+        const today = weather.daily[0]?.date;
+        const commute = weather.hourly
+          .map((time, index) => ({ time, chance: weather.hourlyRainChance[index] }))
+          .filter(item => item.time.slice(0, 10) === today)
+          .filter(item => {
+            const hour = Number(item.time.slice(11, 13));
+            return (hour >= 7 && hour <= 10) || (hour >= 16 && hour <= 19);
+          })
+          .map(item => item.chance)
+          .filter(Number.isFinite);
+        return commute.length ? Math.max(...commute) : weather.daily[0]?.rainChance;
+      }
+
+      function speakWeatherBrief() {
+        if (!('speechSynthesis' in window)) {
+          $('voiceStatus').textContent = 'Spoken replies are not supported by this browser. The forecast is available on screen.';
+          return;
+        }
+        const current = weather.current;
+        const today = weather.daily[0];
+        if (!current || !today) {
+          $('voiceStatus').textContent = 'Weather details are not ready yet. Please try again shortly.';
+          return;
+        }
+        const unit = weather.unit === 'c' ? 'degrees Celsius' : 'degrees Fahrenheit';
+        const spokenTemp = value => `${displayTemp(value).replace('°', '')} ${unit}`;
+        const [condition] = weatherCode(current.weather_code);
+        const chance = commuteRainChance();
+        const weekBrief = weather.daily.slice(0, 7).map(day => {
+          const [dayCondition] = weatherCode(day.code);
+          return `${dateLabel(day.date)}: ${dayCondition}, high ${spokenTemp(day.max)}, low ${spokenTemp(day.min)}, rain chance ${day.rainChance ?? 'unavailable'} percent`;
+        }).join('. ');
+        const localDate = dateLabel(current.time.slice(0, 10), { weekday: 'long', month: 'long', day: 'numeric' });
+        const advice = Number.isFinite(chance) && chance >= rainAlertThreshold
+          ? `Rain is likely during office commute hours at ${chance} percent. Take an umbrella or raincoat to the office.`
+          : `The highest rain chance during office commute hours is ${Number.isFinite(chance) ? `${chance} percent` : 'unavailable'}.`;
+        const air = weather.air?.current;
+        const airLevel = airQualityLevel(air?.us_aqi);
+        const airBrief = air
+          ? `Air quality: US AQI ${Number.isFinite(air.us_aqi) ? Math.round(air.us_aqi) : 'unavailable'}, ${airLevel.label}; European AQI ${air.european_aqi ?? 'unavailable'}. ${airLevel.advice} Concentrations in micrograms per cubic metre: PM2.5 ${air.pm2_5 ?? 'unavailable'}, PM10 ${air.pm10 ?? 'unavailable'}, ozone ${air.ozone ?? 'unavailable'}, dust ${air.dust ?? 'unavailable'}, nitrogen dioxide ${air.nitrogen_dioxide ?? 'unavailable'}, sulphur dioxide ${air.sulphur_dioxide ?? 'unavailable'}, carbon monoxide ${air.carbon_monoxide ?? 'unavailable'}.`
+          : 'Air-quality readings are unavailable for this location right now.';
+        const hazardList = getEnvironmentalHazards();
+        const hazardBrief = hazardList.length
+          ? `Environmental advisories: ${hazardList.map(hazard => `${hazard.title}. ${hazard.detail}`).join(' ')}`
+          : 'No elevated air-quality or severe-weather indicators are currently detected by the available forecast models.';
+        const climateCountdown = $('climateClockBudget').textContent;
+        const monthly = $('monthSummary').innerText.replace(/\n/g, ', ');
+        const message = `Vataavaran weather and environment brief for ${weatherLocation.label}, ${localDate}. Current conditions: ${condition}, ${spokenTemp(current.temperature_2m)}, feels like ${spokenTemp(current.apparent_temperature)}, humidity ${current.relative_humidity_2m} percent, wind ${current.wind_speed_10m} kilometres per hour. Today's high is ${spokenTemp(today.max)} and low ${spokenTemp(today.min)}. Rainfall expected ${today.rain.toFixed(1)} millimetres, with a peak daily rain chance of ${today.rainChance ?? 'unavailable'} percent. Sunrise ${displayTime(today.sunrise)}, sunset ${displayTime(today.sunset)}. ${advice} ${airBrief} ${hazardBrief} Local environmental impact rating: ${$('impactRatingLabel').textContent}, based on local AQI and forecast hazards; this is not a carbon-footprint score. Global Climate Clock, an illustrative 1.5 degree pathway estimate: ${$('climateClockValue').textContent}. ${climateCountdown} Seven day forecast: ${weekBrief}. Monthly outlook for ${$('monthLabel').textContent}, only for the available ${weather.daily.length} day forecast window: ${monthly}. Forecast-based environmental advisories are not official emergency warnings; follow local authorities. Data from Open-Meteo.`;
+        window.speechSynthesis.cancel();
+        const utterance = new SpeechSynthesisUtterance(message);
+        utterance.lang = 'en-IN';
+        utterance.rate = 1;
+        utterance.onstart = () => { $('voiceStatus').textContent = 'Reading the complete weather brief aloud…'; };
+        utterance.onend = () => { $('voiceStatus').textContent = 'Weather brief finished. Ask again any time for an updated forecast.'; };
+        utterance.onerror = event => { $('voiceStatus').textContent = `Could not speak the weather brief: ${event.error}.`; };
+        window.speechSynthesis.speak(utterance);
+      }
+
+      async function handleVoiceRequest(transcript) {
+        const requestedLocation = extractVoiceLocation(transcript);
+        $('voiceStatus').textContent = requestedLocation
+          ? `Looking up the weather for ${requestedLocation}…`
+          : 'No location named. Trying your current device location…';
+        try {
+          if (requestedLocation) {
+            const places = await lookupLocations(requestedLocation);
+            if (!places.length) {
+              $('voiceStatus').textContent = `I could not find ${requestedLocation}. Try saying a city and country, or a PIN code.`;
+              return;
+            }
+            weatherLocation = {
+              latitude: Number(places[0].latitude),
+              longitude: Number(places[0].longitude),
+              timezone: places[0].timezone || 'auto',
+              label: places[0].label
+            };
+            $('locationSearch').value = places[0].inputLabel || places[0].name;
+          } else {
+            try {
+              weatherLocation = await getDeviceLocation();
+              $('locationSearch').value = 'My location';
+            } catch {
+              $('voiceStatus').textContent = 'Device location is unavailable or permission was denied. I will use the location currently selected in Vataavaran.';
+            }
+          }
+          const loaded = await loadWeather();
+          if (!loaded) {
+            $('voiceStatus').textContent = 'I could not retrieve weather for this location. Please try again.';
+            return;
+          }
+          const [description] = weatherCode(weather.current.weather_code);
+          $('voiceStatus').textContent = `Updated ${weatherLocation.label}: ${description}. Preparing the full weather brief.`;
+          speakWeatherBrief();
+        } catch (error) {
+          $('voiceStatus').textContent = `Could not retrieve the requested weather: ${error.message}`;
+        }
+      }
+
+      function startVoiceAssistant() {
+        const Recognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+        if (!Recognition) {
+          $('voiceStatus').textContent = 'Voice input is not supported by this browser. Try a current version of Chrome or Edge, or use the location search.';
+          return;
+        }
+        const button = $('voiceButton');
+        const recognition = new Recognition();
+        recognition.lang = 'en-IN';
+        recognition.interimResults = false;
+        recognition.maxAlternatives = 1;
+        button.disabled = true;
+        button.classList.add('listening');
+        button.textContent = '🎙 Listening…';
+        $('voiceStatus').textContent = 'Listening. Ask for weather details and name a city, or leave the location out to use your current location.';
+        recognition.onresult = event => {
+          const transcript = event.results[0][0].transcript;
+          $('voiceStatus').textContent = `You asked: “${transcript}”`;
+          handleVoiceRequest(transcript);
+        };
+        recognition.onerror = event => {
+          $('voiceStatus').textContent = event.error === 'not-allowed'
+            ? 'Microphone access was denied. Allow microphone access in your browser to use voice.'
+            : `Voice input failed: ${event.error}. Try again or use location search.`;
+        };
+        recognition.onend = () => {
+          button.disabled = false;
+          button.classList.remove('listening');
+          button.textContent = '🎙 Ask by voice';
+        };
+        try {
+          recognition.start();
+        } catch (error) {
+          button.disabled = false;
+          button.classList.remove('listening');
+          button.textContent = '🎙 Ask by voice';
+          $('voiceStatus').textContent = `Could not start voice input: ${error.message}`;
+        }
+      }
+
+      unitButtons.forEach(button => button.addEventListener('click', () => {
+        weather.unit = button.dataset.unit;
+        render();
+      }));
+      $('refreshButton').addEventListener('click', loadWeather);
+      $('voiceButton').addEventListener('click', startVoiceAssistant);
+      $('locationSearchForm').addEventListener('submit', event => {
+        event.preventDefault();
+        searchLocations($('locationSearch').value);
+      });
+      $('locationSearch').addEventListener('focus', () => {
+        if ($('searchResults').childElementCount) $('searchResults').classList.add('open');
+      });
+      $('locationSearch').addEventListener('keydown', event => {
+        if (event.key === 'Escape') $('searchResults').classList.remove('open');
+      });
+      document.addEventListener('click', event => {
+        if (!event.target.closest('.search-area')) $('searchResults').classList.remove('open');
+      });
+      $('myLocationButton').addEventListener('click', () => {
+        if (!navigator.geolocation) {
+          showSearchMessage('Device location is not supported by this browser.', true);
+          return;
+        }
+        showSearchMessage('Waiting for location permission…');
+        navigator.geolocation.getCurrentPosition(
+          position => selectLocation({
+            latitude: position.coords.latitude,
+            longitude: position.coords.longitude,
+            timezone: 'auto',
+            label: `My location · ${position.coords.latitude.toFixed(2)}, ${position.coords.longitude.toFixed(2)}`,
+            name: 'My location',
+            inputLabel: 'My location'
+          }),
+          error => showSearchMessage(`Could not get your location: ${error.message}`, true),
+          { enableHighAccuracy: false, timeout: 10000, maximumAge: 300000 }
+        );
+      });
+      $('notifyButton').addEventListener('click', async () => {
+        if (!('Notification' in window)) {
+          $('updatedAt').textContent = 'This browser does not support notifications; use the in-app rain guidance.';
+          return;
+        }
+        const permission = await Notification.requestPermission();
+        $('notifyButton').textContent = permission === 'granted' ? 'Weather & environment alerts enabled' : 'Notifications not enabled';
+        if (permission === 'granted') {
+          updateRainAdvice();
+          renderEnvironmentalAlerts();
+        }
+      });
+      loadWeather();
+      updateClimateClock();
+      window.setInterval(updateClimateClock, 1000);
+      window.setInterval(loadWeather, 30 * 60 * 1000);
+    </script>
+  </body>
+</html>
